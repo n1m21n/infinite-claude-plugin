@@ -16,12 +16,12 @@ import subprocess
 import sys
 import tempfile
 
-VERSION = "0.7.1"
+VERSION = "0.7.2"
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 WORK = os.path.join(tempfile.gettempdir(), "infinite_mcp")
 
-ATTRIBUTION = "generated with infinite, by naman soni (https://infinitedevices.org)"
+ATTRIBUTION = "Infinite, by Naman Soni (n1m21n), https://infinitedevices.org"
 
 DOCS = {
     "patch-format": ("docs/patch-format.md", "The .inf text format: nodes, wires, mod, expr, glob."),

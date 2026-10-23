@@ -1,7 +1,7 @@
 {
   "name": "infinite-mcp",
   "displayName": "Infinite MCP",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "description": "Discover Infinite nodes, write and validate .inf patches, author Field and 2D JavaScript sketches, and render stills, frame sequences, video and audio measurements, using the local Infinite app.",
   "author": {
     "name": "Naman Soni",
