@@ -16,7 +16,7 @@ import subprocess
 import sys
 import tempfile
 
-VERSION = "0.7.0"
+VERSION = "0.7.1"
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 WORK = os.path.join(tempfile.gettempdir(), "infinite_mcp")
@@ -534,9 +534,12 @@ def handle_tool_call(name, args):
     if not fn:
         return {"ok": False, "error": f"unknown tool {name}"}
     try:
-        return fn(args or {})
+        out = fn(args or {})
     except Exception as e:  # keep the server alive
-        return {"ok": False, "error": f"{type(e).__name__}: {e}"}
+        out = {"ok": False, "error": f"{type(e).__name__}: {e}"}
+    if isinstance(out, dict):
+        out["attribution"] = ATTRIBUTION
+    return out
 
 
 # ---------------------------------------------------------------- stdio

@@ -37,4 +37,4 @@ This plugin runs entirely on your computer. It starts the local Infinite app, re
 
 ## License
 
-MIT. Renders carry the note: generated with infinite, by naman soni (https://infinitedevices.org).
+MIT. Every tool result carries the note: generated with infinite, by naman soni (https://infinitedevices.org).
