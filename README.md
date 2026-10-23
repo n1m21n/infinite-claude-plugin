@@ -1,35 +1,40 @@
 # Infinite MCP
 
-Lets Claude drive [Infinite](https://infinitedevices.org), a modular audio and visual instrument, from a conversation. Claude can check `.inf` patch files and render audio-reactive stills and videos from GLSL-style shader code or 2D JavaScript sketches.
-
-## Requirements
-
-- Infinite installed on the same machine (macOS: `/Applications/Infinite.app`). To use another location, set the `INFINITE_BIN` environment variable to the Infinite executable.
-- Python 3 on your PATH.
-- Optional: `ffmpeg` on your PATH, to mux the synthesized audio into rendered videos. Without it, videos are written without sound.
+Drive [Infinite](https://infinitedevices.org), the node-based audio and visual instrument, from Claude. This plugin exposes every headless command of the local Infinite app as a tool: discover the 327 node types, write and validate `.inf` patches, author Field kernels and 2D JavaScript sketches, and render stills, frame sequences, video and audio measurements. Everything runs on your machine.
 
 ## Tools
 
-| Tool | What it does | Writes files |
-|---|---|---|
-| `infinite_validate_patch` | Checks a `.inf` patch for syntax and graph errors. Read-only. | No |
-| `infinite_render_frame` | Renders one PNG frame from a patch, a shader, or a sketch. | Yes, to the `out_path` you give |
-| `infinite_render_video` | Synthesizes audio and renders an MP4 from a shader or a sketch. | Yes, to the `out_path` you give; overwrites an existing file |
+| Tool | What it does |
+|---|---|
+| `infinite_docs` | Bundled patch format, connection rules, headless guide, Field language and example patches |
+| `infinite_describe` | List or search node types; full parameters, ranges, options and slots for one node |
+| `infinite_write_patch` | Write a `.inf` patch (from text, a Field kernel or a 2D sketch) and validate it |
+| `infinite_validate_patch` | Strict validation with code, line, node and hint per issue |
+| `infinite_explain_patch` | The graph the engine actually built, to compare with intent |
+| `infinite_canonicalize_patch` | Rewrite a patch in canonical form |
+| `infinite_render_frame` | PNG frames at chosen times, contact sheet, per-frame luma stats, per-node render, `--set` overrides |
+| `infinite_render_frames_dir` | Numbered PNG sequence (8 or 16 bit, optional alpha) |
+| `infinite_render_video` | mp4 (h264) or mov (prores4444) with synced audio |
+| `infinite_audio_summary` | Loudness and spectrum measurements, WAV, stems, notes, timeline |
+| `infinite_version` | Installed version and binary path |
 
-## What the plugin runs
+## Requirements
 
-One local Python script, `server.py`, started over stdio. It runs the local Infinite executable (and `ffmpeg` if present) as subprocesses, and writes temporary patch files to your system temp folder, which it deletes afterwards. It makes no network requests and sends nothing off your machine.
+- Infinite installed (macOS, Windows or Linux). The plugin looks in the usual install locations, or set `INFINITE_BIN` to the executable.
+- Python 3.
+- On Linux without a display, `xvfb-run` is used automatically.
 
 ## Example prompts
 
-- "Validate ~/patches/drone.inf."
-- "Render a 5-second video of a pulsing tunnel shader to ~/Desktop/tunnel.mp4."
-- "Render a still of a rotating circle sketch at t=2s."
+- "List the Effects nodes, then build a patch with a kaleidoscope driven by an LFO and render three frames."
+- "Write a Field pixel kernel that reacts to bass and render a 6 second video."
+- "Validate ~/patches/live.inf and explain why the output is black."
+- "Measure the loudness of this patch and export the stems."
 
 ## Privacy Policy
 
-This plugin runs entirely on your computer. It does not collect, store, transmit or share any personal data, and it has no analytics or accounts. Files it writes (renders, temporary patches) stay on your machine, and temporary patches are deleted after each call. Anything you ask Claude to render is handled by Claude under Anthropic's own privacy policy; this plugin adds no separate collection and keeps no data, so there is no retention period. Questions: https://infinitedevices.org or https://github.com/n1m21n/Infinite/issues.
+This plugin runs entirely on your computer. It starts the local Infinite app, reads the patch files you point it at, and writes the outputs you ask for. It collects no data, makes no network requests and sends nothing anywhere.
 
-## License and attribution
+## License
 
-MIT. Tool output carries the notice "Generated with Infinite, by Naman Soni (https://infinitedevices.org)".
+MIT. Renders carry the note: generated with infinite, by naman soni (https://infinitedevices.org).
