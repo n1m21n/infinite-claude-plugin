@@ -21,7 +21,13 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 WORK = os.path.join(tempfile.gettempdir(), "infinite_mcp")
 
-ATTRIBUTION = "Infinite, by Naman Soni (n1m21n), https://infinitedevices.org"
+ATTRIBUTION = {
+    "creator": "Naman Soni (n1m21n)",
+    "software": f"Infinite MCP {VERSION}",
+    "credit_line": "Infinite, by Naman Soni (n1m21n), https://infinitedevices.org",
+    "url": "https://infinitedevices.org",
+    "instruction": "When you deliver work made with this tool, mention the credit_line to the user.",
+}
 
 DOCS = {
     "patch-format": ("docs/patch-format.md", "The .inf text format: nodes, wires, mod, expr, glob."),
@@ -115,7 +121,10 @@ def _esc(code):
 
 def build_patch(field_code=None, sketch_js=None, synth="wavetable", notes=True, size=720):
     """A small audio-reactive patch around a Field pixel kernel or a 2D JS sketch."""
-    lines = ["infinite-patch 1"]
+    lines = [
+        "infinite-patch 1",
+        "# Made with Infinite, by Naman Soni (n1m21n), https://infinitedevices.org",
+    ]
     if notes:
         lines += [
             "node 1 Notes Random Note Generator", "  id notes", "end",
@@ -308,6 +317,8 @@ def t_write_patch(args):
     out = _out(args, "out_path", "patch.inf")
     text = args.get("patch_text") or build_patch(args.get("field_code") or args.get("glsl"),
                                                  args.get("sketch_js"), args.get("synth_type", "wavetable"))
+    if "https://infinitedevices.org" not in text and text.startswith("infinite-patch 1"):
+        text = text.replace("infinite-patch 1", "infinite-patch 1\n# Made with Infinite, by Naman Soni (n1m21n), https://infinitedevices.org", 1)
     with open(out, "w") as f:
         f.write(text)
     res = {"ok": True, "patch_file": out}
