@@ -35,10 +35,21 @@ DOCS = {
 
 def find_infinite():
     mac = "Infinite.app/Contents/MacOS/Infinite"
+    cli_setup_exe = os.path.expanduser("~/Library/Application Support/Infinite/cli-setup/exe")
+    saved_exe = ""
+    if os.path.isfile(cli_setup_exe):
+        try:
+            with open(cli_setup_exe) as f:
+                saved_exe = f.read().strip()
+        except Exception:
+            pass
+
     candidates = [
         os.environ.get("INFINITE_BIN", ""),
+        saved_exe,
         "/Applications/" + mac,
         os.path.expanduser("~/Applications/" + mac),
+        os.path.expanduser("~/Desktop/" + mac),
         os.path.join(ROOT, "build", mac),
         os.path.join(ROOT, "build", "Infinite"),
         r"C:\Program Files\Infinite\Infinite.exe",
@@ -47,6 +58,15 @@ def find_infinite():
     ]
     for c in candidates:
         if c and os.path.isfile(c) and os.access(c, os.X_OK):
+            # If candidate is a shell wrapper pointing to the real binary, resolve it
+            try:
+                with open(c, "rb") as f:
+                    head = f.read(256)
+                    if head.startswith(b"#!/bin/sh") and b"cli-setup/exe" in head and saved_exe:
+                        if os.path.isfile(saved_exe) and os.access(saved_exe, os.X_OK):
+                            return saved_exe
+            except Exception:
+                pass
             return c
     return None
 
@@ -458,36 +478,36 @@ def tool(name, title, desc, sch, a, fn):
 
 
 TOOL_LIST = [
-    tool("infinite_docs", "Read Infinite docs and examples",
-         "Bundled reference: the .inf patch format, connection rules, headless CLI guide, Field language, and example patches. Call with no topic to list them. Read patch-format and field-language before writing a patch.",
+    tool("infinite_docs", "Infinite audiovisual engine documentation and examples",
+         "Search and read the official reference: .inf patch syntax, cable connection rules, headless CLI reference, Field DSP/shader language specifications, and example patches. Call with no topic to list them. Read patch-format and field-language before writing a patch.",
          schema({"topic": {"type": "string", "description": "patch-format | connection-rules | headless | field-language | example:<file>"}}),
          ann("Read Infinite docs and examples", True), t_docs),
-    tool("infinite_describe", "Describe Infinite nodes",
-         "Discover the 327 node types: list/search by name or category, or pass type for one node's parameters (key, default, min, max, options), input slots and outputs. Always call this before using a node; never guess keys.",
+    tool("infinite_describe", "Describe Infinite node types and parameters",
+         "Inspect the 327 modular node types across 3D, AudioEffects, Compositing, Effects, Macros, Modulators, Notes, Prediction, Source, Synths, and Utility. Query parameters (key, default, min, max, options), input slots and outputs. Always call this before using a node; never guess keys.",
          schema({"type": {"type": "string", "description": "Exact node type name for full detail."},
                  "search": {"type": "string", "description": "Substring filter on type name."},
                  "category": {"type": "string", "description": "3D, AudioEffects, Compositing, Effects, Macros, Modulators, Notes, Prediction, Source, Synths, Utility."}}),
          ann("Describe Infinite nodes", True), t_describe),
-    tool("infinite_write_patch", "Write an Infinite patch file",
-         "Write a .inf patch to disk from patch_text, or generate one from field_code / sketch_js, then validate it. Returns patch_file for the other tools.",
+    tool("infinite_write_patch", "Write and validate Infinite audiovisual patch",
+         "Create, save, or compile an Infinite patch (.inf) from raw patch text, Field math expressions, or 2D JavaScript sketches. Automatically validates the node graph and returns patch_file for rendering or analysis.",
          schema(_PATCH_SRC, _GEN_SRC, _COMMON,
                 {"out_path": {"type": "string", "description": "Where to write the .inf (default: temp folder)."},
                  "validate": {"type": "boolean", "default": True}}),
          ann("Write an Infinite patch file", False, True), t_write_patch),
-    tool("infinite_validate_patch", "Validate Infinite patch",
-         "Check a patch for syntax, wiring and graph errors (strict by default). Every issue has a code, line, node and hint. Fix until ok.",
+    tool("infinite_validate_patch", "Validate Infinite audiovisual patch node graph",
+         "Pre-flight validation for an Infinite patch before rendering. Inspects syntax, wiring topology, cable compatibility (audio/video/event/geo), cycle detection, and parameter bounds. Returns actionable error codes and fix hints.",
          schema(_PATCH_SRC, _COMMON, {"for_render": {"type": "boolean", "description": "Also refuse hardware sources (--for-render)."}}),
          ann("Validate Infinite patch", True), t_validate),
-    tool("infinite_explain_patch", "Explain Infinite patch",
-         "Print the graph the engine actually built (nodes, wires, modulation, unreachable nodes) so you can compare it with intent.",
+    tool("infinite_explain_patch", "Explain patch execution graph and modulation",
+         "Analyze the compiled execution graph of an Infinite patch: node evaluation order, cable routing, modulation targets, and dead/unreachable branches.",
          schema(_PATCH_SRC, _COMMON, {"all": {"type": "boolean", "description": "Include every parameter, not just changed ones."}}),
          ann("Explain Infinite patch", True), t_explain),
-    tool("infinite_canonicalize_patch", "Canonicalize Infinite patch",
-         "Rewrite a patch in the app's canonical form (stable ids, normalized order) to a new file.",
+    tool("infinite_canonicalize_patch", "Format and canonicalize Infinite patch",
+         "Normalize and format an Infinite patch file into standard canonical ordering and clean formatting with stable IDs.",
          schema(_PATCH_SRC, _COMMON, {"out_path": {"type": "string"}, "keep_ids": {"type": "boolean"}}),
          ann("Canonicalize Infinite patch", False, True), t_canonicalize),
-    tool("infinite_render_frame", "Render still frames",
-         "Render one or more PNG frames at times (seconds) from a patch, Field kernel or 2D sketch. Returns per-frame stats (mean_luma etc.); optional contact sheet.",
+    tool("infinite_render_frame", "Render still frame or 2D/3D generative graphic",
+         "Render high-resolution PNG frames, procedural graphics, 3D raymarched scenes, or generative canvas art at specific timestamps. Returns frame metrics (mean luminance, RGB balance, alpha coverage). Optional contact sheet grid.",
          schema(_PATCH_SRC, _GEN_SRC, _COMMON, _RENDER,
                 {"times": {"type": "array", "items": {"type": "number"}, "default": [1.0]},
                  "out_path": {"type": "string", "description": "PNG path (one time) or folder."},
@@ -495,15 +515,15 @@ TOOL_LIST = [
                  "repeat": {"type": "integer", "minimum": 1, "maximum": 8},
                  "png_level": {"type": "integer", "minimum": 0, "maximum": 9}}),
          ann("Render still frames", False, True), t_frames),
-    tool("infinite_render_frames_dir", "Render frame sequence",
-         "Render a numbered PNG sequence for a duration (optionally 16-bit or with alpha).",
+    tool("infinite_render_frames_dir", "Render image sequence of procedural animation",
+         "Render a numbered PNG frame sequence (8-bit or 16-bit, with alpha channel) for a specified duration and framerate. Ideal for downstream video editing, compositing, or animation pipelines.",
          schema(_PATCH_SRC, _GEN_SRC, _COMMON,
                 {"out_dir": {"type": "string"}, "duration": {"type": "number", "default": 2},
                  "start": {"type": "number"}, "fps": {"type": "number"}, "alpha": {"type": "boolean"},
                  "depth": {"type": "integer", "enum": [8, 16]}}),
          ann("Render frame sequence", False, True), t_frames_dir),
-    tool("infinite_render_video", "Render audio-reactive video",
-         "Render a video with synced audio (mp4 h264, or mov prores4444) from a patch, Field kernel or 2D sketch.",
+    tool("infinite_render_video", "Render audio-reactive video and generative music visuals",
+         "Render deterministic audio-reactive videos (MP4/H.264 or MOV ProRes 4444) with synchronized modular music or DSP audio in a single call. Use for music visualizers, generative motion graphics, procedural animations, and audio-reactive 3D shaders from a patch, Field code, or 2D canvas sketch.",
          schema(_PATCH_SRC, _GEN_SRC, _COMMON, _RENDER,
                 {"out_path": {"type": "string", "description": "Output .mp4 or .mov path."},
                  "duration": {"type": "number", "default": 4}, "start": {"type": "number"},
@@ -511,8 +531,8 @@ TOOL_LIST = [
                  "codec": {"type": "string", "enum": ["h264", "prores4444"]},
                  "no_audio": {"type": "boolean"}, "plugin_params": {"type": "string"}}),
          ann("Render audio-reactive video", False, True), t_render),
-    tool("infinite_audio_summary", "Measure patch audio",
-         "Render the audio only and return measurements (levels, spectrum, silence), optionally a WAV, per-node stems, notes, note map and timeline.",
+    tool("infinite_audio_summary", "Synthesize audio and measure audio DSP levels",
+         "Synthesize modular synthesizer audio or audio DSP effects headlessly. Renders WAV audio, measures RMS/peak levels, spectral balance, silence detection, pitch detection, note maps, timeline clips, and per-node stems without opening a GUI.",
          schema(_PATCH_SRC, _GEN_SRC, _COMMON,
                 {"wav_path": {"type": "string"}, "output": {"type": "string"},
                  "stems": {"type": "array", "items": {"type": "string"}, "description": "Node ids to export as stems."},
@@ -520,8 +540,8 @@ TOOL_LIST = [
                  "timeline": {"type": "boolean"}, "duration": {"type": "number"}, "start": {"type": "number"},
                  "bpm": {"type": "number"}, "sample_rate": {"type": "integer"}}),
          ann("Measure patch audio", False, True), t_audio_summary),
-    tool("infinite_version", "Infinite version and install check",
-         "Report the installed Infinite version and the binary path this plugin found.",
+    tool("infinite_version", "Check Infinite version and headless engine status",
+         "Verify the installed Infinite engine version, headless capabilities, and executable binary location.",
          schema(), ann("Infinite version and install check", True), t_version),
 ]
 TOOLS = [{k: v for k, v in t.items() if k != "_fn"} for t in TOOL_LIST]
