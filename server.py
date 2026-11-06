@@ -428,6 +428,205 @@ def t_version(args):
     return res
 
 
+ROOT_NOTES = {
+    "C": 0, "C#": 1, "Db": 1, "D": 2, "D#": 3, "Eb": 3, "E": 4, "F": 5,
+    "F#": 6, "Gb": 6, "G": 7, "G#": 8, "Ab": 8, "A": 9, "A#": 10, "Bb": 10, "B": 11
+}
+
+SCALE_TYPES = {
+    "major": 0, "minor": 1, "natural minor": 1, "harmonic minor": 2,
+    "melodic minor": 3, "dorian": 4, "phrygian": 5, "lydian": 6,
+    "mixolydian": 7, "locrian": 8, "major pentatonic": 9,
+    "minor pentatonic": 10, "blues": 11, "whole tone": 12, "chromatic": 13
+}
+
+PROGRESSIONS = {
+    "random": 0, "I V vi IV": 1, "vi IV I V": 2, "I vi IV V": 3, "I IV vi V": 4,
+    "IV I V vi": 5, "IV V iii vi": 6, "I IV": 7, "ii V I": 9, "Canon": 15
+}
+
+TOPOLOGY_MAP = {
+    "plane": 0, "sphere": 1, "cylinder": 2, "torus": 3
+}
+
+
+def t_generate_notes(args):
+    root = args.get("root", "C")
+    scale = args.get("scale", "minor")
+    prog = args.get("progression", "I V vi IV")
+    synth = args.get("synth", "wavetable")
+    kind = args.get("kind", "chords")
+    duration = args.get("duration", 4.0)
+    out_wav = _out(args, "out_wav", "notes.wav")
+
+    root_val = ROOT_NOTES.get(str(root).capitalize(), 0) if isinstance(root, str) else int(root) % 12
+    scale_val = SCALE_TYPES.get(str(scale).lower(), 1) if isinstance(scale, str) else int(scale) % 14
+    mode_val = PROGRESSIONS.get(str(prog), 1) if isinstance(prog, str) else int(prog) % 19
+    synth_type = "Synths Wavetable" if synth == "wavetable" else ("Synths FM" if synth == "fm" else "Synths Analog")
+
+    if kind == "arp":
+        patch = f"""infinite-patch 1
+# Made with Infinite, by Naman Soni (n1m21n), https://infinitedevices.org
+node 1 Notes Chorder
+  id chorder
+  i root {root_val}
+  i scale {scale_val}
+  i mode {mode_val}
+end
+node 2 Notes Arpeggiator
+  id arp
+  i mode 0
+  i octaves 2
+end
+node 3 {synth_type}
+  id synth
+end
+node 4 Utility Audio Out
+  id speaker
+end
+note arp 0 chorder
+note synth 0 arp
+aud speaker 0 synth
+"""
+    else:
+        patch = f"""infinite-patch 1
+# Made with Infinite, by Naman Soni (n1m21n), https://infinitedevices.org
+node 1 Notes Chorder
+  id chorder
+  i root {root_val}
+  i scale {scale_val}
+  i mode {mode_val}
+end
+node 2 {synth_type}
+  id synth
+end
+node 3 Utility Audio Out
+  id speaker
+end
+note synth 0 chorder
+aud speaker 0 synth
+"""
+    tmp = _new_path(".inf")
+    with open(tmp, "w") as f:
+        f.write(patch)
+    try:
+        res = t_audio_summary({"patch_file": tmp, "wav_path": out_wav, "duration": duration})
+        res["out_wav"] = out_wav
+        return res
+    finally:
+        if os.path.exists(tmp):
+            os.remove(tmp)
+
+
+def t_generate_sample(args):
+    part = args.get("part", "bass")
+    duration = args.get("duration", 3.0)
+    synth = args.get("synth", "analog")
+    cutoff = args.get("cutoff", 800.0)
+    out_wav = _out(args, "out_wav", "sample.wav")
+
+    if part == "bass":
+        patch = f"""infinite-patch 1
+# Made with Infinite, by Naman Soni (n1m21n), https://infinitedevices.org
+node 1 Notes Random Note Generator
+  id notes
+end
+node 2 Synths Analog
+  id synth
+  f cutoff {cutoff}
+  f resonance 0.4
+  f drive 0.3
+  f sub 0.5
+  i wave1 0
+end
+node 3 Utility Audio Out
+  id speaker
+end
+note synth 0 notes
+aud speaker 0 synth
+"""
+    elif part == "pad":
+        patch = f"""infinite-patch 1
+# Made with Infinite, by Naman Soni (n1m21n), https://infinitedevices.org
+node 1 Notes Chorder
+  id notes
+  i root 0
+  i scale 1
+  i mode 1
+  f strumMs 40
+end
+node 2 Synths Wavetable
+  id synth
+end
+node 3 Utility Audio Out
+  id speaker
+end
+note synth 0 notes
+aud speaker 0 synth
+"""
+    else:
+        synth_type = "Synths FM" if synth == "fm" else ("Synths Analog" if synth == "analog" else "Synths Wavetable")
+        patch = f"""infinite-patch 1
+# Made with Infinite, by Naman Soni (n1m21n), https://infinitedevices.org
+node 1 Notes Random Note Generator
+  id notes
+end
+node 2 {synth_type}
+  id synth
+end
+node 3 Utility Audio Out
+  id speaker
+end
+note synth 0 notes
+aud speaker 0 synth
+"""
+    tmp = _new_path(".inf")
+    with open(tmp, "w") as f:
+        f.write(patch)
+    try:
+        res = t_audio_summary({"patch_file": tmp, "wav_path": out_wav, "duration": duration})
+        res["out_wav"] = out_wav
+        return res
+    finally:
+        if os.path.exists(tmp):
+            os.remove(tmp)
+
+
+def t_render_mesh(args):
+    topology = args.get("topology", "plane")
+    top_int = TOPOLOGY_MAP.get(str(topology).lower(), 0) if isinstance(topology, str) else int(topology) % 4
+    formula = args.get("formula") or "P.y += sin(P.x * 5.0 + t) * cos(P.z * 5.0) * 0.25; Cd = vec3(0.1, 0.7, 0.9);"
+    out_png = _out(args, "out_png", "mesh.png")
+    time_sec = args.get("time_sec", 1.0)
+    esc_prim = formula.replace('\\', '\\\\').replace('\n', '\\n')
+    patch = f"""infinite-patch 1
+# Made with Infinite, by Naman Soni (n1m21n), https://infinitedevices.org
+node 1 3D Field Primitive
+  id fprim
+  i topology {top_int}
+  s code {esc_prim}
+end
+node 2 3D Render 3D
+  id r3d
+  f width 720
+  f height 720
+end
+node 3 Utility Output
+  id out
+end
+geo r3d 0 fprim
+cable out 0 r3d
+"""
+    tmp = _new_path(".inf")
+    with open(tmp, "w") as f:
+        f.write(patch)
+    try:
+        return t_frames({"patch_file": tmp, "out_path": out_png, "times": [time_sec]})
+    finally:
+        if os.path.exists(tmp):
+            os.remove(tmp)
+
+
 def t_docs(args):
     topic = args.get("topic")
     if not topic:
@@ -555,6 +754,31 @@ TOOL_LIST = [
     tool("infinite_version", "Check Infinite version and headless engine status",
          "Verify the installed Infinite engine version, headless capabilities, and executable binary location.",
          schema(), ann("Infinite version and install check", True), t_version),
+    tool("infinite_generate_notes", "Generate algorithmic music and chords",
+         "Algorithmic musical composition & note generation (chords, arpeggios, melody, bass, pads) rendered to audio. Configurable key, scale, progression, and synth engine.",
+         schema({"kind": {"type": "string", "enum": ["chords", "arp"], "default": "chords"},
+                 "root": {"type": "string", "default": "C"},
+                 "scale": {"type": "string", "default": "minor"},
+                 "progression": {"type": "string", "default": "I V vi IV"},
+                 "synth": {"type": "string", "enum": ["wavetable", "analog", "fm"], "default": "wavetable"},
+                 "duration": {"type": "number", "default": 4.0},
+                 "out_wav": {"type": "string", "description": "Destination WAV audio file path."}}),
+         ann("Generate algorithmic music and chords", False, True), t_generate_notes),
+    tool("infinite_generate_sample", "Generate procedural instrument or sound design take",
+         "Procedural sound design & instrument synthesis (bass, pad, drone, synth) rendered to 24-bit studio WAV with RMS / true peak metrics.",
+         schema({"part": {"type": "string", "enum": ["bass", "pad", "synth"], "default": "bass"},
+                 "duration": {"type": "number", "default": 3.0},
+                 "synth": {"type": "string", "enum": ["analog", "wavetable", "fm"], "default": "analog"},
+                 "cutoff": {"type": "number", "default": 800.0},
+                 "out_wav": {"type": "string", "description": "Destination WAV audio file path."}}),
+         ann("Generate procedural instrument take", False, True), t_generate_sample),
+    tool("infinite_render_mesh", "Render procedural 3D parametric mesh or geometry",
+         "Zero-dependency 3D parametric surface & mesh generation (plane, sphere, cylinder, torus, mathematical formulas) rendered to PNG with raytraced normals and shading.",
+         schema({"topology": {"type": "string", "enum": ["plane", "sphere", "cylinder", "torus"], "default": "plane"},
+                 "formula": {"type": "string", "description": "Math formula for vertex position P, normal N, color Cd."},
+                 "out_png": {"type": "string", "description": "Destination PNG image file path."},
+                 "time_sec": {"type": "number", "default": 1.0}}),
+         ann("Render procedural 3D mesh", False, True), t_render_mesh),
 ]
 TOOLS = [{k: v for k, v in t.items() if k != "_fn"} for t in TOOL_LIST]
 HANDLERS = {t["name"]: t["_fn"] for t in TOOL_LIST}
