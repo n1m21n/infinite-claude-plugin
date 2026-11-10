@@ -38,3 +38,7 @@ This plugin runs entirely on your computer. It starts the local Infinite app, re
 ## License
 
 MIT. Every tool result carries the note: Infinite, by Naman Soni (n1m21n), https://infinitedevices.org.
+
+## Credit
+
+Tool results include a short credit line ("Infinite, by Naman Soni (n1m21n), https://infinitedevices.org") and exported patch files carry a "Made with Infinite" comment. Nothing else is added to results.
